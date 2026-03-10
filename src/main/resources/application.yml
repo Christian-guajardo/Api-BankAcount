@@ -1,0 +1,14 @@
+spring:
+  datasource:
+    url: jdbc:mariadb://localhost:3382/accountbankapi
+    driver-class-name: org.mariadb.jdbc.Driver
+    username: accountbankuser
+    password: accountbankpassword
+
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MariaDBDialect

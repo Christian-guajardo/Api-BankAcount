@@ -1,0 +1,646 @@
+openapi: 3.0.3
+info:
+  title: Bank API - Final Complete
+  description: API finale complète avec architecture correcte
+  version: 4.0.0
+
+servers:
+  - url: http://localhost:8082/api/v1
+    description: Serveur de Bank API
+
+tags:
+  - name: BankAccount
+    description: Gestion des comptes bancaires
+  - name: BankAccountParameter
+    description: Gestion des paramètres
+  - name: BankAccountPivot
+    description: Gestion des co-titulaires (liens)
+  - name: Type
+    description: Types de comptes bancaires
+
+paths:
+  # ==================== BANK ACCOUNTS ====================
+
+  /bank/admin/bank-accounts:
+    get:
+      tags: [BankAccount]
+      summary: "[ADMIN] Liste tous les comptes"
+      
+      responses:
+        '200':
+          description: Liste récupérée
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BankAccount'
+              example:
+                - id: "BA001"
+                  parameter_id: 1
+                  type_id: 1
+                  sold: 1500.50
+                  iban: "FR7612345678901234567890123"
+                - id: "BA002"
+                  parameter_id: 2
+                  type_id: 2
+                  sold: 5000.00
+                  iban: "FR7698765432109876543210987"
+
+  /bank/admin/bank-accounts/{id}:
+    get:
+      tags: [BankAccount]
+      summary: "[ADMIN] Détails d'un compte"
+      
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "BA001"
+      responses:
+        '200':
+          description: Détails du compte
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BankAccountDetail'
+              example:
+                id: "BA001"
+                parameter:
+                  id: 1
+                  overdraft_limit: 500.00
+                  state: "active"
+                type:
+                  id: 1
+                  name: "Compte Courant"
+                sold: 1500.50
+                iban: "FR7612345678901234567890123"
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+    delete:
+      tags: [BankAccount]
+      summary: "[ADMIN] Supprimer un compte"
+      
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "BA001"
+      responses:
+        '204':
+          description: Compte supprimé
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /bank/admin/accounts/{account_id}/bank-accounts:
+    get:
+      tags: [BankAccount]
+      summary: "[ADMIN] Comptes d'un utilisateur"
+      
+      parameters:
+        - name: account_id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "123456789123"
+      responses:
+        '200':
+          description: Liste des comptes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BankAccount'
+              example:
+                - id: "BA001"
+                  parameter_id: 1
+                  type_id: 1
+                  sold: 1500.50
+                  iban: "FR7612345678901234567890123"
+
+    post:
+      tags: [BankAccount]
+      summary: "[ADMIN] Créer un compte"
+      
+      parameters:
+        - name: account_id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "123456789123"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BankAccountCreateRequest'
+            example:
+              type_id: 1
+              iban: "FR7612345678901234567890123"
+              sold: 100.00
+              overdraft_limit: 500.00
+              state: "active"
+      responses:
+        '201':
+          description: Compte créé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BankAccountDetail'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+
+  /bank/my-bank-accounts:
+    get:
+      tags: [ BankAccount ]
+      summary: "[CLIENT] Mes comptes actifs"
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - name: type_id
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: X-User-Id
+          in: header
+          required: true
+          schema:
+            type: string
+          description: ID de l'utilisateur injecté par la gateway
+      responses:
+        '200':
+          description: Liste de mes comptes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BankAccount'
+
+  /bank/my-bank-accounts/{id}:
+    get:
+      tags: [ BankAccount ]
+      summary: "[CLIENT] Détails d'un de mes comptes"
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "BA001"
+        - name: X-User-Id
+          in: header
+          required: true
+          schema:
+            type: string
+          description: ID de l'utilisateur injecté par la gateway
+      responses:
+        '200':
+          description: Détails du compte
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BankAccountDetail'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /bank/my-bank-accounts/{id}/co-holders:
+    get:
+      tags: [ BankAccount ]
+      summary: "[CLIENT] IDs des co-titulaires"
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "BA001"
+        - name: X-User-Id
+          in: header
+          required: true
+          schema:
+            type: string
+          description: ID de l'utilisateur injecté par la gateway
+      responses:
+        '200':
+          description: Liste des IDs des co-titulaires
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                example: [ "123456789124", "123456789125" ]
+
+  # ==================== PARAMETERS ====================
+
+  /bank/admin/bank-accounts/{bank_account_id}/parameters:
+    patch:
+      tags: [BankAccountParameter]
+      summary: "[ADMIN] Mettre à jour les paramètres"
+      
+      parameters:
+        - name: bank_account_id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "BA001"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BankAccountParameter'
+            examples:
+              update_overdraft:
+                summary: "Modifier le découvert"
+                value:
+                  overdraft_limit: 1000.00
+              update_state:
+                summary: "Modifier l'état"
+                value:
+                  state: "inactive"
+              update_both:
+                summary: "Modifier les deux"
+                value:
+                  overdraft_limit: 2000.00
+                  state: "active"
+      responses:
+        '200':
+          description: Paramètres mis à jour
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  # ==================== TYPES ====================
+
+  /bank/admin/types:
+    get:
+      tags: [Type]
+      summary: "[ADMIN] Liste des types"
+      
+      responses:
+        '200':
+          description: Liste des types
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Type'
+
+    post:
+      tags: [Type]
+      summary: "[ADMIN] Créer un type"
+      
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Type'
+            example:
+              name: "Livret Jeune"
+      responses:
+        '201':
+          description: Type créé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Type'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+
+  /bank/admin/types/{id}:
+    get:
+      tags: [Type]
+      summary: "[ADMIN] Récupérer un type"
+      
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Type trouvé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Type'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  # ==================== PIVOT (CO-TITULAIRES) ====================
+
+  /bank/bank-accounts-pivot:
+    post:
+      tags: [BankAccountPivot]
+      summary: "[ADMIN] Ajouter un co-titulaire"
+      
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BankAccountPivot'
+            example:
+              bank_account_id: "BA001"
+              account_id: "123456789124"
+      responses:
+        '201':
+          description: Lien créé
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+
+    delete:
+      tags: [BankAccountPivot]
+      summary: "[ADMIN] Retirer un co-titulaire"
+      
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BankAccountPivot'
+            example:
+              bank_account_id: "BA001"
+              account_id: "123456789124"
+      responses:
+        '204':
+          description: Lien supprimé
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /bank/bank-accounts-pivot/bank-account/{bankAccountId}:
+    get:
+      tags: [BankAccountPivot]
+      summary: "[ADMIN] Co-titulaires d'un compte"
+      
+      parameters:
+        - name: bankAccountId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "BA001"
+      responses:
+        '200':
+          description: Liste des liens
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BankAccountPivot'
+
+    delete:
+      tags: [BankAccountPivot]
+      summary: "[ADMIN] Retirer tous les co-titulaires"
+      
+      parameters:
+        - name: bankAccountId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "BA001"
+      responses:
+        '204':
+          description: Tous les liens supprimés
+
+  /bank/bank-accounts-pivot/account/{accountId}:
+    get:
+      tags: [BankAccountPivot]
+      summary: "[CLIENT] Mes liens de comptes"
+      
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "123456789123"
+      responses:
+        '200':
+          description: Liste des liens
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BankAccountPivot'
+
+    delete:
+      tags: [BankAccountPivot]
+      summary: "[ADMIN] Retirer tous les comptes d'un user"
+      
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "123456789123"
+      responses:
+        '204':
+          description: Tous les liens supprimés
+
+components:
+  schemas:
+    BankAccountCreateRequest:
+      type: object
+      required:
+        - type_id
+        - iban
+        - sold
+        - overdraft_limit
+      properties:
+        type_id:
+          type: integer
+          example: 1
+        iban:
+          type: string
+          example: "FR7612345678901234567890123"
+        sold:
+          type: number
+          format: double
+          example: 100.00
+        overdraft_limit:
+          type: number
+          format: double
+          example: 500.00
+        state:
+          $ref: '#/components/schemas/State'
+
+    BankAccount:
+      type: object
+      description: Version simple (pour listes)
+      properties:
+        id:
+          type: string
+          example: "BA001"
+        parameter_id:
+          type: integer
+          example: 1
+        type_id:
+          type: integer
+          example: 1
+        sold:
+          type: number
+          format: double
+          example: 1500.50
+        iban:
+          type: string
+          example: "FR7612345678901234567890123"
+
+    BankAccountDetail:
+      type: object
+      description: Version complète (avec détails)
+      properties:
+        id:
+          type: string
+          example: "BA001"
+        parameter:
+          $ref: '#/components/schemas/BankAccountParameter'
+        type:
+          $ref: '#/components/schemas/Type'
+        sold:
+          type: number
+          format: double
+          example: 1500.50
+        iban:
+          type: string
+          example: "FR7612345678901234567890123"
+
+    BankAccountParameter:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        overdraft_limit:
+          type: number
+          format: double
+          example: 500.00
+        state:
+          $ref: '#/components/schemas/State'
+
+    BankAccountPivot:
+      type: object
+      description: Lien compte-utilisateur (co-titulaire)
+      required:
+        - bank_account_id
+        - account_id
+      properties:
+        bank_account_id:
+          type: string
+          example: "BA001"
+        account_id:
+          type: string
+          example: "123456789123"
+
+    Type:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Compte Courant"
+
+    State:
+      type: string
+      enum:
+        - active
+        - inactive
+        - bloqued
+        - closed
+      example: "active"
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          example: "400"
+        message:
+          type: string
+          example: "Requête invalide"
+        details:
+          type: string
+          example: "Le champ 'amount' doit être supérieur à 0"
+
+  responses:
+    UnauthorizedError:
+      description: Non autorisé - Token manquant ou invalide
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: "401"
+            message: "Token manquant ou invalide"
+            details: "Le token JWT est expiré ou invalide"
+
+    NotFoundError:
+      description: Ressource non trouvée
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: "404"
+            message: "Ressource non trouvée"
+            details: "Compte bancaire non trouvé"
+
+    BadRequestError:
+      description: Requête invalide
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: "400"
+            message: "Requête invalide"
+            details: "Le champ 'iban' est obligatoire"
+
+    ForbiddenError:
+      description: Accès interdit
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: "403"
+            message: "Accès interdit"
+            details: "Ce compte ne vous appartient pas"
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []
