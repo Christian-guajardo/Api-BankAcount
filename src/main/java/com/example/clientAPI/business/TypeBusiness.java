@@ -4,11 +4,11 @@ import com.example.clientAPI.entity.TypesEntity;
 import com.example.clientAPI.mapper.TypeMapper;
 import com.example.clientAPI.repository.TypeRepository;
 import dto.bankapi.Type;
+import jakarta.ws.rs.NotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.stream.Collectors;
-
 
 @Service
 public class TypeBusiness {
@@ -26,11 +26,9 @@ public class TypeBusiness {
 
     public TypesEntity getTypeById(Integer id) {
         Type dto = typeRepository.getTypeById(id);
-
         if (dto == null) {
-            throw new IllegalArgumentException("Type non trouvé");
+            throw new NotFoundException("Type non trouvé");
         }
-
         return TypeMapper.toEntity(dto);
     }
 

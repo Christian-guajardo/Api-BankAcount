@@ -3,8 +3,6 @@ package com.example.clientAPI.business;
 import com.example.clientAPI.entity.BankAccountDetailEntity;
 import com.example.clientAPI.entity.BankAccountEntity;
 import com.example.clientAPI.entity.BankAccountParameterEntity;
-import com.example.clientAPI.entity.BankAccountPivotEntity;
-import com.example.clientAPI.mapper.BankAccountDetailMapper;
 import com.example.clientAPI.repository.BankAccountParameterRepository;
 import com.example.clientAPI.repository.BankAccountPivotRepository;
 import com.example.clientAPI.repository.BankAccountRepository;
@@ -13,6 +11,7 @@ import dto.bankapi.BankAccountDetail;
 import dto.bankapi.BankAccountParameter;
 import dto.bankapi.State;
 import dto.bankapi.Type;
+import jakarta.ws.rs.NotFoundException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -142,11 +141,11 @@ class BankAccountBusinessTest {
     }
 
     @Test
-    void testGetBankAccountDetailByIdThrowsIllegalArgumentExceptionWhenNotFound() {
+    void testGetBankAccountDetailByIdThrowsNotFoundExceptionWhenNotFound() {
         when(bankAccountRepository.getBankAccountDetailById("INEXISTANT")).thenReturn(null);
 
-        IllegalArgumentException ex = assertThrows(
-                IllegalArgumentException.class,
+        NotFoundException ex = assertThrows(
+                NotFoundException.class,
                 () -> bankAccountBusiness.getBankAccountDetailById("INEXISTANT")
         );
 
@@ -157,8 +156,7 @@ class BankAccountBusinessTest {
 
     @Test
     void testCreateBankAccountForUser() {
-        BankAccountParameterEntity createdParam = validParameterEntity();
-        when(bankAccountParameterBusiness.createParameterEntity(any())).thenReturn(createdParam);
+        when(bankAccountParameterBusiness.createParameterEntity(any())).thenReturn(validParameterEntity());
         when(bankAccountRepository.getBankAccountDetailById(anyString()))
                 .thenReturn(validBankAccountDetailDto());
 
@@ -187,15 +185,108 @@ class BankAccountBusinessTest {
     }
 
     @Test
-    void testDeleteBankAccountThrowsIllegalArgumentExceptionWhenNotFound() {
+    void testDeleteBankAccountThrowsNotFoundExceptionWhenNotFound() {
         when(bankAccountRepository.getBankAccountById("INEXISTANT")).thenReturn(null);
 
-        IllegalArgumentException ex = assertThrows(
-                IllegalArgumentException.class,
+        NotFoundException ex = assertThrows(
+                NotFoundException.class,
                 () -> bankAccountBusiness.deleteBankAccount("INEXISTANT")
         );
 
         assertTrue(ex.getMessage().contains("non trouvé"));
     }
 
+    // ==================== getMyBankAccounts ====================
+
+    @Test
+    void testGetMyBankAccountsWithoutTypeId() {
+        when(bankAccountRepository.getActiveBankAccountsByUserId("ACC-1"))
+                .thenReturn(List.of(validBankAccountDto()));
+
+        List<BankAccountEntity> result = bankAccountBusiness.getMyBankAccounts("ACC-1", null);
+
+        assertEquals(1, result.size());
+        verify(bankAccountRepository).getActiveBankAccountsByUserId("ACC-1");
+        verify(bankAccountRepository, never()).getActiveBankAccountsByUserIdAndTypeId(any(), any());
+    }
+
+    @Test
+    void testGetMyBankAccountsWithTypeId() {
+        when(bankAccountRepository.getActiveBankAccountsByUserIdAndTypeId("ACC-1", 1))
+                .thenReturn(List.of(validBankAccountDto()));
+
+        List<BankAccountEntity> result = bankAccountBusiness.getMyBankAccounts("ACC-1", 1);
+
+        assertEquals(1, result.size());
+        verify(bankAccountRepository).getActiveBankAccountsByUserIdAndTypeId("ACC-1", 1);
+        verify(bankAccountRepository, never()).getActiveBankAccountsByUserId(any());
+    }
+
+    // ==================== getMyBankAccountById ====================
+
+    @Test
+    void testGetMyBankAccountById() {
+        when(bankAccountRepository.getBankAccountDetailById("BA001"))
+                .thenReturn(validBankAccountDetailDto());
+        when(bankAccountPivotRepository.getAccountsByBankAccount("BA001"))
+                .thenReturn(List.of("ACC-1", "ACC-2"));
+
+        BankAccountDetailEntity result = bankAccountBusiness.getMyBankAccountById("ACC-1", "BA001");
+
+        assertNotNull(result);
+        assertEquals("BA001", result.getId());
+    }
+
+    @Test
+    void testGetMyBankAccountByIdThrowsNotFoundExceptionWhenNotFound() {
+        when(bankAccountRepository.getBankAccountDetailById("INEXISTANT")).thenReturn(null);
+
+        NotFoundException ex = assertThrows(
+                NotFoundException.class,
+                () -> bankAccountBusiness.getMyBankAccountById("ACC-1", "INEXISTANT")
+        );
+
+        assertTrue(ex.getMessage().contains("non trouvé"));
+    }
+
+    @Test
+    void testGetMyBankAccountByIdThrowsSecurityExceptionWhenUserNotOwner() {
+        when(bankAccountRepository.getBankAccountDetailById("BA001"))
+                .thenReturn(validBankAccountDetailDto());
+        when(bankAccountPivotRepository.getAccountsByBankAccount("BA001"))
+                .thenReturn(List.of("ACC-2", "ACC-3"));
+
+        SecurityException ex = assertThrows(
+                SecurityException.class,
+                () -> bankAccountBusiness.getMyBankAccountById("ACC-1", "BA001")
+        );
+
+        assertTrue(ex.getMessage().contains("appartient pas"));
+    }
+
+    // ==================== getCoHolderIds ====================
+
+    @Test
+    void testGetCoHolderIds() {
+        when(bankAccountPivotRepository.getAccountsByBankAccount("BA001"))
+                .thenReturn(List.of("ACC-1", "ACC-2", "ACC-3"));
+
+        List<String> result = bankAccountBusiness.getCoHolderIds("ACC-1", "BA001");
+
+        assertEquals(2, result.size());
+        assertFalse(result.contains("ACC-1"));
+        assertTrue(result.contains("ACC-2"));
+        assertTrue(result.contains("ACC-3"));
+    }
+
+    @Test
+    void testGetCoHolderIdsReturnsEmptyWhenSoleHolder() {
+        when(bankAccountPivotRepository.getAccountsByBankAccount("BA001"))
+                .thenReturn(List.of("ACC-1"));
+
+        List<String> result = bankAccountBusiness.getCoHolderIds("ACC-1", "BA001");
+
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+    }
 }

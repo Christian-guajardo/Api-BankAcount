@@ -7,7 +7,7 @@ DROP TABLE IF EXISTS Types;
 CREATE TABLE BankAccountParameter (
                                       id INT AUTO_INCREMENT PRIMARY KEY,
                                       overdraft_limit DOUBLE NOT NULL DEFAULT 0.00,
-                                      state ENUM('active', 'inactive','bloqued','closed') NOT NULL DEFAULT 'active'
+                                      state ENUM('ACTIVE', 'INACTIVE','BLOQUED','CLOSED') NOT NULL DEFAULT 'ACTIVE'
 );
 
 -- Table Types (types de comptes bancaires)
@@ -42,10 +42,10 @@ INSERT INTO Types (name) VALUES ('PEL');
 INSERT INTO Types (name) VALUES ('Compte Épargne');
 
 -- Insertion de données de test pour BankAccountParameter
-INSERT INTO BankAccountParameter (overdraft_limit, state) VALUES (500.00, 'active');
-INSERT INTO BankAccountParameter (overdraft_limit, state) VALUES (1000.00, 'active');
-INSERT INTO BankAccountParameter (overdraft_limit, state) VALUES (0.00, 'active');
-INSERT INTO BankAccountParameter (overdraft_limit, state) VALUES (2000.00, 'inactive');
+INSERT INTO BankAccountParameter (overdraft_limit, state) VALUES (500.00, 'ACTIVE');
+INSERT INTO BankAccountParameter (overdraft_limit, state) VALUES (1000.00, 'ACTIVE');
+INSERT INTO BankAccountParameter (overdraft_limit, state) VALUES (0.00, 'ACTIVE');
+INSERT INTO BankAccountParameter (overdraft_limit, state) VALUES (2000.00, 'INACTIVE');
 
 -- Insertion de données de test pour BankAccount
 INSERT INTO BankAccount (id, parameter_id, type_id, sold, iban)

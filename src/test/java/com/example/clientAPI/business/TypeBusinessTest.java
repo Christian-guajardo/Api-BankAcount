@@ -3,6 +3,7 @@ package com.example.clientAPI.business;
 import com.example.clientAPI.entity.TypesEntity;
 import com.example.clientAPI.repository.TypeRepository;
 import dto.bankapi.Type;
+import jakarta.ws.rs.NotFoundException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -80,11 +81,11 @@ class TypeBusinessTest {
     }
 
     @Test
-    void testGetTypeByIdThrowsIllegalArgumentExceptionWhenNotFound() {
+    void testGetTypeByIdThrowsNotFoundExceptionWhenNotFound() {
         when(typeRepository.getTypeById(9999)).thenReturn(null);
 
-        IllegalArgumentException ex = assertThrows(
-                IllegalArgumentException.class,
+        NotFoundException ex = assertThrows(
+                NotFoundException.class,
                 () -> typeBusiness.getTypeById(9999)
         );
 
@@ -98,8 +99,7 @@ class TypeBusinessTest {
         when(typeRepository.getAllTypes()).thenReturn(List.of());
         when(typeRepository.createType(any())).thenReturn(buildTypeDto(5, "Livret Jeune"));
 
-        TypesEntity entity = buildTypeEntity(null, "Livret Jeune");
-        TypesEntity result = typeBusiness.createType(entity);
+        TypesEntity result = typeBusiness.createType(buildTypeEntity(null, "Livret Jeune"));
 
         assertNotNull(result);
         assertEquals(5, result.getId());
@@ -111,19 +111,16 @@ class TypeBusinessTest {
         when(typeRepository.getAllTypes()).thenReturn(List.of());
         when(typeRepository.createType(any())).thenReturn(buildTypeDto(6, "PEL"));
 
-        TypesEntity entity = buildTypeEntity(null, "  PEL  ");
-        typeBusiness.createType(entity);
+        typeBusiness.createType(buildTypeEntity(null, "  PEL  "));
 
         verify(typeRepository).createType(argThat(t -> "PEL".equals(t.getName())));
     }
 
     @Test
     void testCreateTypeThrowsIllegalArgumentExceptionOnNullName() {
-        TypesEntity entity = buildTypeEntity(null, null);
-
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
-                () -> typeBusiness.createType(entity)
+                () -> typeBusiness.createType(buildTypeEntity(null, null))
         );
 
         assertTrue(ex.getMessage().contains("obligatoire"));
@@ -131,11 +128,9 @@ class TypeBusinessTest {
 
     @Test
     void testCreateTypeThrowsIllegalArgumentExceptionOnBlankName() {
-        TypesEntity entity = buildTypeEntity(null, "   ");
-
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
-                () -> typeBusiness.createType(entity)
+                () -> typeBusiness.createType(buildTypeEntity(null, "   "))
         );
 
         assertTrue(ex.getMessage().contains("obligatoire"));
@@ -143,15 +138,11 @@ class TypeBusinessTest {
 
     @Test
     void testCreateTypeThrowsIllegalArgumentExceptionOnDuplicateName() {
-        when(typeRepository.getAllTypes()).thenReturn(List.of(
-                buildTypeDto(1, "Compte Courant")
-        ));
-
-        TypesEntity entity = buildTypeEntity(null, "compte courant"); // case-insensitive
+        when(typeRepository.getAllTypes()).thenReturn(List.of(buildTypeDto(1, "Compte Courant")));
 
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
-                () -> typeBusiness.createType(entity)
+                () -> typeBusiness.createType(buildTypeEntity(null, "compte courant"))
         );
 
         assertTrue(ex.getMessage().contains("déjà"));
@@ -159,15 +150,11 @@ class TypeBusinessTest {
 
     @Test
     void testCreateTypeThrowsIllegalArgumentExceptionOnExactDuplicateName() {
-        when(typeRepository.getAllTypes()).thenReturn(List.of(
-                buildTypeDto(2, "Livret A")
-        ));
-
-        TypesEntity entity = buildTypeEntity(null, "Livret A");
+        when(typeRepository.getAllTypes()).thenReturn(List.of(buildTypeDto(2, "Livret A")));
 
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
-                () -> typeBusiness.createType(entity)
+                () -> typeBusiness.createType(buildTypeEntity(null, "Livret A"))
         );
 
         assertEquals("Ce type de compte existe déjà", ex.getMessage());

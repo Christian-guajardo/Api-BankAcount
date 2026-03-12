@@ -2,7 +2,10 @@ package com.example.clientAPI.business;
 
 import com.example.clientAPI.entity.BankAccountPivotEntity;
 import com.example.clientAPI.repository.BankAccountPivotRepository;
+import com.example.clientAPI.repository.BankAccountRepository;
+import dto.bankapi.BankAccount;
 import dto.bankapi.BankAccountPivot;
+import jakarta.ws.rs.NotFoundException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -21,6 +24,9 @@ class BankAccountPivotBusinessTest {
     @Mock
     private BankAccountPivotRepository bankAccountPivotRepository;
 
+    @Mock
+    private BankAccountRepository bankAccountRepository;
+
     @InjectMocks
     private BankAccountPivotBusiness bankAccountPivotBusiness;
 
@@ -33,26 +39,62 @@ class BankAccountPivotBusinessTest {
         return entity;
     }
 
+    private BankAccount validBankAccount() {
+        BankAccount ba = new BankAccount();
+        ba.setId("BA001");
+        ba.setParameterId(1);
+        ba.setTypeId(1);
+        ba.setSold(1000.00);
+        ba.setIban("FR7612345678901234567890123");
+        return ba;
+    }
+
     // ==================== createLink ====================
 
     @Test
     void testCreateLink() {
-        BankAccountPivotEntity entity = buildEntity("BA001", "ACC-1");
+        when(bankAccountRepository.getBankAccountById("BA001")).thenReturn(validBankAccount());
 
-        bankAccountPivotBusiness.createLink(entity);
+        bankAccountPivotBusiness.createLink(buildEntity("BA001", "ACC-1"));
 
         verify(bankAccountPivotRepository).createPivot(any(BankAccountPivot.class));
+    }
+
+    @Test
+    void testCreateLinkThrowsNotFoundExceptionWhenBankAccountNotFound() {
+        when(bankAccountRepository.getBankAccountById("INEXISTANT")).thenReturn(null);
+
+        NotFoundException ex = assertThrows(
+                NotFoundException.class,
+                () -> bankAccountPivotBusiness.createLink(buildEntity("INEXISTANT", "ACC-1"))
+        );
+
+        assertTrue(ex.getMessage().contains("non trouvé"));
+        verify(bankAccountPivotRepository, never()).createPivot(any());
     }
 
     // ==================== deleteLink ====================
 
     @Test
     void testDeleteLink() {
-        BankAccountPivotEntity entity = buildEntity("BA001", "ACC-1");
+        when(bankAccountRepository.getBankAccountById("BA001")).thenReturn(validBankAccount());
 
-        bankAccountPivotBusiness.deleteLink(entity);
+        bankAccountPivotBusiness.deleteLink(buildEntity("BA001", "ACC-1"));
 
         verify(bankAccountPivotRepository).deletePivot(any(BankAccountPivot.class));
+    }
+
+    @Test
+    void testDeleteLinkThrowsNotFoundExceptionWhenBankAccountNotFound() {
+        when(bankAccountRepository.getBankAccountById("INEXISTANT")).thenReturn(null);
+
+        NotFoundException ex = assertThrows(
+                NotFoundException.class,
+                () -> bankAccountPivotBusiness.deleteLink(buildEntity("INEXISTANT", "ACC-1"))
+        );
+
+        assertTrue(ex.getMessage().contains("non trouvé"));
+        verify(bankAccountPivotRepository, never()).deletePivot(any());
     }
 
     // ==================== deleteAllByBankAccount ====================
@@ -91,8 +133,7 @@ class BankAccountPivotBusinessTest {
 
     @Test
     void testGetLinksByBankAccountReturnsEmptyList() {
-        when(bankAccountPivotRepository.getAccountsByBankAccount("BA001"))
-                .thenReturn(List.of());
+        when(bankAccountPivotRepository.getAccountsByBankAccount("BA001")).thenReturn(List.of());
 
         List<BankAccountPivotEntity> result = bankAccountPivotBusiness.getLinksByBankAccount("BA001");
 
@@ -118,12 +159,12 @@ class BankAccountPivotBusinessTest {
 
     @Test
     void testGetLinksByAccountReturnsEmptyList() {
-        when(bankAccountPivotRepository.getBankAccountsByAccount("ACC-INEXISTANT"))
-                .thenReturn(List.of());
+        when(bankAccountPivotRepository.getBankAccountsByAccount("ACC-INEXISTANT")).thenReturn(List.of());
 
         List<BankAccountPivotEntity> result = bankAccountPivotBusiness.getLinksByAccount("ACC-INEXISTANT");
 
         assertNotNull(result);
         assertTrue(result.isEmpty());
     }
+
 }

@@ -1,15 +1,14 @@
 package com.example.clientAPI.business;
 
 import com.example.clientAPI.entity.BankAccountParameterEntity;
-import com.example.clientAPI.mapper.BankAccountMapper;
 import com.example.clientAPI.mapper.BankAccountParameterMapper;
 import com.example.clientAPI.repository.BankAccountParameterRepository;
 import com.example.clientAPI.repository.BankAccountRepository;
 import dto.bankapi.BankAccount;
 import dto.bankapi.BankAccountParameter;
 import dto.bankapi.State;
+import jakarta.ws.rs.NotFoundException;
 import org.springframework.stereotype.Service;
-
 
 @Service
 public class BankAccountParameterBusiness {
@@ -41,7 +40,7 @@ public class BankAccountParameterBusiness {
     public void updateParametersByBankAccountId(String bankAccountId, BankAccountParameterEntity parameterEntity) {
         BankAccount bankAccount = bankAccountRepository.getBankAccountById(bankAccountId);
         if (bankAccount == null) {
-            throw new IllegalArgumentException("Compte bancaire non trouvé");
+            throw new NotFoundException("Compte bancaire non trouvé");
         }
 
         if (parameterEntity.getOverdraftLimit() != null && parameterEntity.getOverdraftLimit() < 0) {

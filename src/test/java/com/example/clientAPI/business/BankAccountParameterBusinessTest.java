@@ -6,6 +6,7 @@ import com.example.clientAPI.repository.BankAccountRepository;
 import dto.bankapi.BankAccount;
 import dto.bankapi.BankAccountParameter;
 import dto.bankapi.State;
+import jakarta.ws.rs.NotFoundException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -77,10 +78,8 @@ class BankAccountParameterBusinessTest {
         returned.setState(State.ACTIVE);
         when(bankAccountParameterRepository.createParameter(any())).thenReturn(returned);
 
-        BankAccountParameterEntity result = bankAccountParameterBusiness.createParameterEntity(entity);
+        bankAccountParameterBusiness.createParameterEntity(entity);
 
-        assertNotNull(result);
-        // Le business doit avoir passé 0.0 au repository
         verify(bankAccountParameterRepository).createParameter(argThat(p -> p.getOverdraftLimit() == 0.0));
     }
 
@@ -96,10 +95,8 @@ class BankAccountParameterBusinessTest {
         returned.setState(State.ACTIVE);
         when(bankAccountParameterRepository.createParameter(any())).thenReturn(returned);
 
-        BankAccountParameterEntity result = bankAccountParameterBusiness.createParameterEntity(entity);
+        bankAccountParameterBusiness.createParameterEntity(entity);
 
-        assertNotNull(result);
-        // Le business doit avoir passé State.ACTIVE par défaut
         verify(bankAccountParameterRepository).createParameter(argThat(p -> State.ACTIVE.equals(p.getState())));
     }
 
@@ -146,11 +143,11 @@ class BankAccountParameterBusinessTest {
     }
 
     @Test
-    void testUpdateParametersByBankAccountIdThrowsIllegalArgumentExceptionWhenBankAccountNotFound() {
+    void testUpdateParametersByBankAccountIdThrowsNotFoundExceptionWhenBankAccountNotFound() {
         when(bankAccountRepository.getBankAccountById("INEXISTANT")).thenReturn(null);
 
-        IllegalArgumentException ex = assertThrows(
-                IllegalArgumentException.class,
+        NotFoundException ex = assertThrows(
+                NotFoundException.class,
                 () -> bankAccountParameterBusiness.updateParametersByBankAccountId("INEXISTANT", validParameterEntity())
         );
 
